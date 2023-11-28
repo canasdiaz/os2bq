@@ -1,5 +1,6 @@
 import certifi
 import configparser
+import json
 
 from opensearchpy import OpenSearch
 from opensearch_dsl import Search
@@ -63,9 +64,38 @@ def connect(my_conf):
 
     return client
 
+def key_breaks_bigquery(key):
+    """
+    Returns True when the key creates issues when moving data to BigQuery.
+
+    The common issue with the problematic fields is that they have incoherent type of 
+    values in the indexes, so BigQuery is not able to ingest them.
+    """
+
+    # red flag with gender_acc: we started filtering out some of the gender_acc fields, but we are seeing so many errors that we decide to drop all of them
+    # NONE_INSTEAD_OF_ZERO = ["owner_gender_acc","author_gender_acc","commit_gender_acc","user_data_gender_acc"]
+    is_genderish = key.find("gender") > 0
+
+    # fields that break bigquery due to the incoherent type they have
+    NONE_INSTEAD_OF_EMPTY_LIST = ["tags"]
+    NULL_INSTEAD_OF_EMPTY_LIST = ["non_authored_co_authored_by_multi_domains","co_authored_by_multi_domains","signed_off_by_multi_domains","non_authored_signed_off_by_multi_domains"]
+    UNKNOWN = ["reported_by_multi_bots","label"]
+
+    problematic = NONE_INSTEAD_OF_EMPTY_LIST + NULL_INSTEAD_OF_EMPTY_LIST + UNKNOWN
+
+    breaks_bq = (key in problematic) or is_genderish
+
+    return breaks_bq
+
+
 def read_and_write(my_conf, conn):
     """ This method extracts data from specified OpenSearch indices, converts it to JSON
     format, and writes it to individual JSON files, one for each index.
+
+    The output format must follow these rules:
+      - everything is a string except lists
+      - double quote instead of single quote
+      - one line per document
     """
 
     files_created = []
@@ -87,8 +117,18 @@ def read_and_write(my_conf, conn):
                 # Some keys are repeated if they are converted to lowercase,
                 # so we overwrite them to get rid of them
                 for key, value in hit.to_dict().items():
-                    buffer[key.lower()] = value
-                fd.write(str(buffer) + '\n')
+                    if key_breaks_bigquery(key.lower()):
+                        continue
+    
+                    # first we convert everything to string
+                    if isinstance(value, list):
+                        # we need to keep the lists as they are
+                        buffer[key.lower()] = value
+                    else:
+                        buffer[key.lower()] = str(value)
+    
+                str_buffer = json.dumps(buffer)
+                fd.write(str_buffer + '\n')
                 cont += 1
 
         files_created.append((output_file,cont))
