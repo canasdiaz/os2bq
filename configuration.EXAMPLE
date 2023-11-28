@@ -1,0 +1,9 @@
+[clean]
+host = localhost
+port = 9200
+path = 
+indices = github_events,github_issues,github_pull_requests,github_repos,github2_issues,github2_pull_requests,git_areas_of_code,git
+output_dir = /tmp/bq/
+user = admin 
+password = admin
+scroll_size = 1000
