@@ -2,6 +2,7 @@ import certifi
 import configparser
 import json
 
+from google.cloud import storage
 from opensearchpy import OpenSearch
 from opensearch_dsl import Search
 
@@ -10,11 +11,9 @@ def main():
 
     conf = read_configuration('configuration')
     client = connect(conf)
-    files_docs = read_and_write(conf,client)
-
-    print("List of files created:")
-    for t in files_docs:
-        print("File %s: %d documents" % t )
+    for i in conf['indices']:
+        output_file = read_and_write(i, conf['output_dir'],client)
+        copy_to_bucket(conf['bucket_name'], output_file, i)
 
 def read_configuration(file_name):
     """Parses the configuration file and extracts the required parameters: port, path, 
@@ -88,7 +87,7 @@ def key_breaks_bigquery(key):
     return breaks_bq
 
 
-def read_and_write(my_conf, conn):
+def read_and_write(index_name, output_dir, conn):
     """ This method extracts data from specified OpenSearch indices, converts it to JSON
     format, and writes it to individual JSON files, one for each index.
 
@@ -98,43 +97,43 @@ def read_and_write(my_conf, conn):
       - one line per document
     """
 
-    files_created = []
+    #if not conn.indices.exists(index=index_name):            
+    #    continue
 
-    for i in my_conf['indices']:
+    s = None
+    s = Search(using=conn, index=index_name)
 
-        if not conn.indices.exists(index=i):            
-            continue
+    output_file = output_dir + "/" + str(index_name)
 
-        s = None
-        s = Search(using=conn, index=i)
-
-        output_file = my_conf['output_dir'] + "/" + str(i)
-
-        cont = 0
-        with open(output_file, 'w') as fd:
-            for hit in s.scan():
-                buffer = {}
-                # Some keys are repeated if they are converted to lowercase,
-                # so we overwrite them to get rid of them
-                for key, value in hit.to_dict().items():
-                    if key_breaks_bigquery(key.lower()):
-                        continue
+    with open(output_file, 'w') as fd:
+        for hit in s.scan():
+            buffer = {}
+            # Some keys are repeated if they are converted to lowercase,
+            # so we overwrite them to get rid of them
+            for key, value in hit.to_dict().items():
+                if key_breaks_bigquery(key.lower()):
+                    continue
     
-                    # first we convert everything to string
-                    if isinstance(value, list):
-                        # we need to keep the lists as they are
-                        buffer[key.lower()] = value
-                    else:
-                        buffer[key.lower()] = str(value)
+                # first we convert everything to string
+                if isinstance(value, list):
+                    # we need to keep the lists as they are
+                    buffer[key.lower()] = value
+                else:
+                    buffer[key.lower()] = str(value)
     
-                str_buffer = json.dumps(buffer)
-                fd.write(str_buffer + '\n')
-                cont += 1
+            str_buffer = json.dumps(buffer)
+            fd.write(str_buffer + '\n')
 
-        files_created.append((output_file,cont))
+    return output_file
 
-    return files_created
+def copy_to_bucket(bucket_name, source_file_name, destination_blob_name):
+    """ Uploads a file to the bucket.
+    """
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
 
+    blob.upload_from_filename(source_file_name)
 
 if __name__ == "__main__":
     main()

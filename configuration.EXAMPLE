@@ -7,3 +7,4 @@ output_dir = /tmp/bq/
 user = admin 
 password = admin
 scroll_size = 1000
+bucket_name = os2bq
