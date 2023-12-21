@@ -12,7 +12,7 @@ def main():
     conf = read_configuration('configuration')
     client = connect(conf)
     for i in conf['indices']:
-        if not conn.indices.exists(index=i):
+        if not client.indices.exists(index=i):
             continue
         output_file = read_and_write(i, conf['output_dir'],client)
         copy_to_bucket(conf['bucket_name'], output_file, i)
