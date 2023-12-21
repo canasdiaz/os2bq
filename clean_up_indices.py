@@ -12,6 +12,8 @@ def main():
     conf = read_configuration('configuration')
     client = connect(conf)
     for i in conf['indices']:
+        if not conn.indices.exists(index=i):
+            continue
         output_file = read_and_write(i, conf['output_dir'],client)
         copy_to_bucket(conf['bucket_name'], output_file, i)
 
@@ -96,9 +98,6 @@ def read_and_write(index_name, output_dir, conn):
       - double quote instead of single quote
       - one line per document
     """
-
-    #if not conn.indices.exists(index=index_name):            
-    #    continue
 
     s = None
     s = Search(using=conn, index=index_name)
