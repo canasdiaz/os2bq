@@ -16,6 +16,10 @@ def main():
             continue
         output_file = read_and_write(i, conf['output_dir'],client)
         copy_to_bucket(conf['bucket_name'], output_file, i)
+        #create bq table
+        #copy to bq table
+        #log file completed, show progress
+        #remove file
 
 def read_configuration(file_name):
     """Parses the configuration file and extracts the required parameters: port, path, 
