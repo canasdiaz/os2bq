@@ -16,15 +16,21 @@ def main():
 
     for i in conf['indices']:
         if not client.indices.exists(index=i):
-            continue
+            print("Index %s not found", str(i))
+            continue            
+        
         output_file = read_and_write(i, conf['output_dir'],client)
+        print("Index %s copied to local machine", str(i))
+        
         copy_to_bucket(conf['bucket_name'], output_file, i)
-
-        bq_table_id = conf['gcp_project'] + "." + conf['dataset'] + "." + i
+        print("Index %s copied to bucket", str(i))
+        
+        bq_table_id = conf['gcp_project'] + "." + conf['bq_dataset'] + "." + i
         create_bq_table(bq_client, bq_table_id)
 
         uri = "gs://" + conf['bucket_name'] + "/" + i
         copy_to_bq(bq_client, bq_table_id, uri)
+        print("Index %s copied to BigQuery", str(i))
         #log file completed, show progress
         #remove file
 
