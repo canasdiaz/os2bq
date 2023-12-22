@@ -2,7 +2,7 @@ import certifi
 import configparser
 import json
 
-from google.cloud import storage
+from google.cloud import storage, bigquery
 from opensearchpy import OpenSearch
 from opensearch_dsl import Search
 
@@ -16,6 +16,7 @@ def main():
             continue
         output_file = read_and_write(i, conf['output_dir'],client)
         copy_to_bucket(conf['bucket_name'], output_file, i)
+        create_bq_table(i)
         #create bq table
         #copy to bq table
         #log file completed, show progress
@@ -138,6 +139,14 @@ def copy_to_bucket(bucket_name, source_file_name, destination_blob_name):
     blob = bucket.blob(destination_blob_name)
 
     blob.upload_from_filename(source_file_name)
+
+def create_bq_table(name)
+    """
+    """
+    client = bigquery.Client()
+
+    bq_table = bigquery.Table(name)
+    table = client.create_table(bq_table)
 
 if __name__ == "__main__":
     main()
