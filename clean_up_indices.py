@@ -3,6 +3,7 @@ import configparser
 import json
 
 from google.cloud import storage, bigquery
+from google.api_core import exceptions
 from opensearchpy import OpenSearch
 from opensearch_dsl import Search
 
@@ -150,7 +151,7 @@ def create_bq_table(project, dataset, name):
     bq_table = bigquery.Table(table_name)
     try:
         table = client.create_table(bq_table)
-    except google.api_core.exceptions.Conflict:
+    except exceptions.Conflict:
         pass
 
 #def copy_to_bq()
