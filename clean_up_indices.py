@@ -12,13 +12,19 @@ def main():
 
     conf = read_configuration('configuration')
     client = connect(conf)
+    bq_client = bigquery.Client()
+
     for i in conf['indices']:
         if not client.indices.exists(index=i):
             continue
         output_file = read_and_write(i, conf['output_dir'],client)
         copy_to_bucket(conf['bucket_name'], output_file, i)
-        create_bq_table(conf['gcp_project'], conf['bq_dataset'], i)
-        #copy to bq table
+
+        bq_table_id = conf['project'] + "." + conf['dataset'] + "." + i
+        create_bq_table(bq_client, bq_table_id)
+
+        uri = "gs://" + conf['bucket_name'] + "/" + i
+        copy_to_bq(bq_client, bq_table_id, uri)
         #log file completed, show progress
         #remove file
 
@@ -142,19 +148,36 @@ def copy_to_bucket(bucket_name, source_file_name, destination_blob_name):
 
     blob.upload_from_filename(source_file_name)
 
-def create_bq_table(project, dataset, name):
+def create_bq_table(client, table_id):
     """
     """
-    client = bigquery.Client()
-
-    table_name = project + "." + dataset + "." + name
-    bq_table = bigquery.Table(table_name)
+    bq_table = bigquery.Table(table_id)
     try:
         table = client.create_table(bq_table)
     except exceptions.Conflict:
         pass
 
-#def copy_to_bq()
+def copy_to_bq(client, table_id, uri):
+    """
+    """
+    # TODO(developer): Set table_id to the ID of the table to create.
+    # table_id = "your-project.your_dataset.your_table_name"
+
+    job_config = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+    )
+    
+    load_job = client.load_table_from_uri(
+        uri,
+        table_id,
+        location="US",  # Must match the destination dataset location.
+        job_config=job_config,
+    )  # Make an API request.
+
+    load_job.result()  # Waits for the job to complete.
+
+    destination_table = client.get_table(table_id)
+    print("Loaded {} rows.".format(destination_table.num_rows))
 
 if __name__ == "__main__":
     main()
