@@ -173,6 +173,7 @@ def copy_to_bq(client, table_id, uri):
     # table_id = "your-project.your_dataset.your_table_name"
 
     job_config = bigquery.LoadJobConfig(
+        autodetect=True,
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
     )
     
