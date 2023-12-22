@@ -1,6 +1,7 @@
 import certifi
 import configparser
 import json
+import os
 
 from google.cloud import storage, bigquery
 from google.api_core import exceptions
@@ -16,23 +17,25 @@ def main():
 
     for i in conf['indices']:
         if not client.indices.exists(index=i):
-            print("Index %s not found", str(i))
+            print("Index %s not found" % str(i))
             continue            
         
         output_file = read_and_write(i, conf['output_dir'],client)
-        print("Index %s copied to local machine", str(i))
+        print("Index %s copied to local machine: file %s" %  (str(i), str(output_file)))
         
         copy_to_bucket(conf['bucket_name'], output_file, i)
-        print("Index %s copied to bucket", str(i))
+        print("Index %s copied to bucket" % str(i))
         
         bq_table_id = conf['gcp_project'] + "." + conf['bq_dataset'] + "." + i
         create_bq_table(bq_client, bq_table_id)
 
         uri = "gs://" + conf['bucket_name'] + "/" + i
-        copy_to_bq(bq_client, bq_table_id, uri)
-        print("Index %s copied to BigQuery", str(i))
-        #log file completed, show progress
-        #remove file
+        rows = copy_to_bq(bq_client, bq_table_id, uri)
+        print("Index %s copied to BigQuery: %d" % (str(i), rows))
+
+        if os.path.exists(output_file):
+            os.remove(output_file)
+
 
 def read_configuration(file_name):
     """Parses the configuration file and extracts the required parameters: port, path, 
@@ -183,7 +186,7 @@ def copy_to_bq(client, table_id, uri):
     load_job.result()  # Waits for the job to complete.
 
     destination_table = client.get_table(table_id)
-    print("Loaded {} rows.".format(destination_table.num_rows))
+    return destination_table.num_rows
 
 if __name__ == "__main__":
     main()
