@@ -8,3 +8,5 @@ user = admin
 password = admin
 scroll_size = 1000
 bucket_name = os2bq
+gcp_project = opensource-bitergia
+bq_dataset = 
