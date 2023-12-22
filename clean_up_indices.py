@@ -153,7 +153,7 @@ def create_bq_table(project, dataset, name):
     except google.api_core.exceptions.Conflict:
         pass
 
-def copy_to_bq()
+#def copy_to_bq()
 
 if __name__ == "__main__":
     main()
