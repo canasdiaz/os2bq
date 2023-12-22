@@ -140,7 +140,7 @@ def copy_to_bucket(bucket_name, source_file_name, destination_blob_name):
 
     blob.upload_from_filename(source_file_name)
 
-def create_bq_table(name)
+def create_bq_table(name):
     """
     """
     client = bigquery.Client()
