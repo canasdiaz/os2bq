@@ -41,6 +41,7 @@ def read_configuration(file_name):
     my_conf['scroll_size'] = section['scroll_size']
     indices = section['indices']
     my_conf['indices'] = indices.replace(' ','').split(',')
+    my_conf['bucket_name'] = section['bucket_name']
 
     return my_conf
 
