@@ -43,6 +43,8 @@ def read_configuration(file_name):
     indices = section['indices']
     my_conf['indices'] = indices.replace(' ','').split(',')
     my_conf['bucket_name'] = section['bucket_name']
+    my_conf['gcp_project'] = section['gcp_project']
+    my_conf['bq_dataset'] = section['bq_dataset']
 
     return my_conf
 
@@ -140,12 +142,13 @@ def copy_to_bucket(bucket_name, source_file_name, destination_blob_name):
 
     blob.upload_from_filename(source_file_name)
 
-def create_bq_table(name):
+def create_bq_table(project, dataset, name):
     """
     """
     client = bigquery.Client()
 
-    bq_table = bigquery.Table(name)
+    table_name = project + "." + dataset + "." + name
+    bq_table = bigquery.Table(table_name)
     table = client.create_table(bq_table)
 
 if __name__ == "__main__":
