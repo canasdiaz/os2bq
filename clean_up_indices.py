@@ -20,7 +20,7 @@ def main():
         output_file = read_and_write(i, conf['output_dir'],client)
         copy_to_bucket(conf['bucket_name'], output_file, i)
 
-        bq_table_id = conf['project'] + "." + conf['dataset'] + "." + i
+        bq_table_id = conf['gcp_project'] + "." + conf['dataset'] + "." + i
         create_bq_table(bq_client, bq_table_id)
 
         uri = "gs://" + conf['bucket_name'] + "/" + i
