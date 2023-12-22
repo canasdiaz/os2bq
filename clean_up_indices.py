@@ -31,7 +31,7 @@ def main():
 
         uri = "gs://" + conf['bucket_name'] + "/" + i
         rows = copy_to_bq(bq_client, bq_table_id, uri)
-        print("Index %s copied to BigQuery: %d" % (str(i), rows))
+        print("Index %s copied to BigQuery: %d rows" % (str(i), rows))
 
         if os.path.exists(output_file):
             os.remove(output_file)
