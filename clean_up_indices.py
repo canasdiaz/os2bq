@@ -16,7 +16,7 @@ def main():
             continue
         output_file = read_and_write(i, conf['output_dir'],client)
         copy_to_bucket(conf['bucket_name'], output_file, i)
-        create_bq_table(i)
+        create_bq_table(conf['gcp_project'], conf['bq_dataset'], i)
         #create bq table
         #copy to bq table
         #log file completed, show progress
