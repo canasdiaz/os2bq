@@ -41,8 +41,8 @@ def main():
             print("Index %s not found" % str(index_name))
             continue
 
-        print("Index %s contains %d documents" % (str(index_name), 
-                                                  os_client.count(index=index_name)))
+        documents_count = os_client.count(index_name).get('count', 0)
+        print("Index %s contains %d documents" % (str(index_name), documents_count))
 
         file_name = os_to_json(index_name, parameters['output_dir'],os_client)
         print("Index %s copied to local machine: file %s" %                
