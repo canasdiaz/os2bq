@@ -1,3 +1,5 @@
+# Bitergia Analytics Platform to BigQuery tables
+
 This script moves data from the Bitergia Analytics Platform to BigQuery tables. The 
 transformation is as simple as possible, so the result tables are not as efficient as
 they could be. Many fields are repeated as the origin format is a nosql database.
