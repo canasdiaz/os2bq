@@ -13,73 +13,72 @@ from opensearch_dsl import Search
 def main():
 
     args = parse_args()    
-    conf = read_configuration(args.configuration_file)
-    client = connect(conf)
+    parameters = parse_configuration(args.configuration_file)
+    os_client = os_connect(parameters)
     bq_client = bigquery.Client()
 
-    for i in conf['indices']:
-        if not client.indices.exists(index=i):
-            print("Index %s not found" % str(i))
+    for index_name in parameters['indices']:
+        if not os_client.indices.exists(index=index_name):
+            print("Index %s not found" % str(index_name))
             continue            
         
-        output_file = read_and_write(i, conf['output_dir'],client)
-        print("Index %s copied to local machine: file %s" %  (str(i), str(output_file)))
+        file_name = read_and_write(index_name, parameters['output_dir'],os_client)
+        print("Index %s copied to local machine: file %s" %                
+              (str(index_name), str(file_name)))
         
-        copy_to_bucket(conf['bucket_name'], output_file, i)
-        print("Index %s copied to bucket" % str(i))
+        copy_to_bucket(parameters['bucket_name'], file_name, index_name)
+        print("Index %s copied to bucket" % str(index_name))
         
-        bq_table_id = conf['gcp_project'] + "." + conf['bq_dataset'] + "." + i
+        bq_table_id = parameters['gcp_project'] + "." + parameters['bq_dataset'] + "." + index_name
         create_bq_table(bq_client, bq_table_id)
 
-        uri = "gs://" + conf['bucket_name'] + "/" + i
+        uri = "gs://" + parameters['bucket_name'] + "/" + index_name
         rows = copy_to_bq(bq_client, bq_table_id, uri)
-        print("Index %s copied to BigQuery: %d rows" % (str(i), rows))
+        print("Index %s copied to BigQuery: %d rows" % (str(index_name), rows))
 
-        if os.path.exists(output_file):
-            os.remove(output_file)
+        if os.path.exists(file_name):
+            os.remove(file_name)
 
 def parse_args():
-    """Parses positional argument with the configuration file.
+    """Parses positional argument with the configuration file. Returns object with the
+    arguments.
     """
     parser = argparse.ArgumentParser(description='Copy data from GrimoireLab to BigQuery')
     parser.add_argument('configuration_file')
     return parser.parse_args()
 
-def read_configuration(file_name):
+def parse_configuration(file_name):
     """Parses the configuration file and extracts the required parameters: port, path, 
     user, password, output_dir, indices, scroll_size.
 
-    Returns a dictionary my_conf containing the extracted parameters.
+    Returns a dictionary containing the extracted parameters.
     """
-    my_conf = {}
+    parameters = {}
     config = configparser.ConfigParser()
     config.read(file_name)    
-    section = config['clean']
+    section = config['bap2bq']
 
-    my_conf['host'] = section['host']
-    my_conf['port'] = section['port']
-    my_conf['path'] = section['path']
-    my_conf['user'] = section['user']
-    my_conf['password'] = section['password']
-    my_conf['output_dir'] = section['output_dir']
-    my_conf['scroll_size'] = section['scroll_size']
+    parameters['host'] = section['host']
+    parameters['port'] = section['port']
+    parameters['path'] = section['path']
+    parameters['user'] = section['user']
+    parameters['password'] = section['password']
+    parameters['output_dir'] = section['output_dir']
+    parameters['scroll_size'] = section['scroll_size']
     indices = section['indices']
-    my_conf['indices'] = indices.replace(' ','').split(',')
-    my_conf['bucket_name'] = section['bucket_name']
-    my_conf['gcp_project'] = section['gcp_project']
-    my_conf['bq_dataset'] = section['bq_dataset']
+    parameters['indices'] = indices.replace(' ','').split(',')
+    parameters['bucket_name'] = section['bucket_name']
+    parameters['gcp_project'] = section['gcp_project']
+    parameters['bq_dataset'] = section['bq_dataset']
 
-    return my_conf
+    return parameters
 
-def connect(my_conf):
+def os_connect(my_conf):
     """Creates an OpenSearch client object client using the provided configuration 
     parameters.
     
     Returns the established OpenSearch client object.
     """
-
-    # Create the client with SSL/TLS enabled, but hostname verification disabled.
-
     connection = "https://" + my_conf['user'] + ":" + my_conf['password'] + "@" + my_conf['host'] + ":" + my_conf['port'] + "/" + my_conf['path']
 
     client = OpenSearch(
@@ -110,7 +109,6 @@ def key_breaks_bigquery(key):
       'tested_by'
     - 'tags' and 'label' excluded due to incoherent data type
     """
-
     PROBLEMATIC = ["gender", "non_authored", "signed_off", "tested_by", "co_authored",
                    "tags", "reported_by", "label", "reported_by"]
 
@@ -123,19 +121,17 @@ def key_breaks_bigquery(key):
 
     return breaks_bq
 
+def read_and_write(index_name, output_dir, opensearch_connection):
+    """ This method extracts data from an OpenSearch index, converts it to JSON format, 
+    and writes it to an individual JSON file. Returns the name of the file name as output.
 
-def read_and_write(index_name, output_dir, conn):
-    """ This method extracts data from specified OpenSearch indices, converts it to JSON
-    format, and writes it to individual JSON files, one for each index.
-
-    The output format must follow these rules:
+    The format of the created JSON file must follow these rules:
       - everything is a string except lists
       - double quote instead of single quote
       - one line per document
     """
-
     s = None
-    s = Search(using=conn, index=index_name)
+    s = Search(using=opensearch_connection, index=index_name)
 
     output_file = output_dir + "/" + str(index_name)
 
