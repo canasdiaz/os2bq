@@ -103,20 +103,24 @@ def key_breaks_bigquery(key):
 
     The common issue with the problematic fields is that they have incoherent type of 
     values in the indexes, so BigQuery is not able to ingest them.
+
+    - gender: we started filtering out some of the gender_acc fields, but we are 
+      seeing so many errors that we decide to drop all of them
+    - fields that read special fields from the git log (typically in the Linux kernel)
+      are also discarded, these are the ones with 'non_authored', 'signed_off' and 
+      'tested_by'
+    - 'tags' and 'label' excluded due to incoherent data type
     """
 
-    # red flag with gender_acc: we started filtering out some of the gender_acc fields, but we are seeing so many errors that we decide to drop all of them
-    # NONE_INSTEAD_OF_ZERO = ["owner_gender_acc","author_gender_acc","commit_gender_acc","user_data_gender_acc"]
-    is_genderish = key.find("gender") > 0
+    PROBLEMATIC = ["gender", "non_authored", "signed_off", "tested_by", "co_authored",
+                   "tags", "reported_by", "label", "reported_by"]
 
-    # fields that break bigquery due to the incoherent type they have
-    NONE_INSTEAD_OF_EMPTY_LIST = ["tags"]
-    NULL_INSTEAD_OF_EMPTY_LIST = ["non_authored_co_authored_by_multi_domains","co_authored_by_multi_domains","signed_off_by_multi_domains","non_authored_signed_off_by_multi_domains"]
-    UNKNOWN = ["reported_by_multi_bots","label"]
+    breaks_bq = False
 
-    problematic = NONE_INSTEAD_OF_EMPTY_LIST + NULL_INSTEAD_OF_EMPTY_LIST + UNKNOWN
-
-    breaks_bq = (key in problematic) or is_genderish
+    for token in PROBLEMATIC:
+        if key.find(token) >= 0:
+            breaks_bq = True
+            break
 
     return breaks_bq
 
