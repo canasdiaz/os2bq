@@ -1,3 +1,4 @@
+import argparse
 import certifi
 import configparser
 import json
@@ -11,7 +12,8 @@ from opensearch_dsl import Search
 
 def main():
 
-    conf = read_configuration('configuration')
+    args = parse_args()    
+    conf = read_configuration(args.configuration_file)
     client = connect(conf)
     bq_client = bigquery.Client()
 
@@ -35,6 +37,13 @@ def main():
 
         if os.path.exists(output_file):
             os.remove(output_file)
+
+def parse_args():
+    """
+    """
+    parser = argparse.ArgumentParser(description='Copy data from GrimoireLab to BigQuery')
+    parser.add_argument('configuration_file')
+    return parser.parse_args()
 
 
 def read_configuration(file_name):
