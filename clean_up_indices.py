@@ -39,12 +39,11 @@ def main():
             os.remove(output_file)
 
 def parse_args():
-    """
+    """Parses positional argument with the configuration file.
     """
     parser = argparse.ArgumentParser(description='Copy data from GrimoireLab to BigQuery')
     parser.add_argument('configuration_file')
     return parser.parse_args()
-
 
 def read_configuration(file_name):
     """Parses the configuration file and extracts the required parameters: port, path, 
