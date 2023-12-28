@@ -200,7 +200,7 @@ def create_bq_table(client, table_id):
 
 def bucket_to_bq(client, table_id, uri):
     """Copy content from a file in a Google bucket (given with the uri) to a BigQuery 
-    table. Returns the number of rows written in BigQuery.
+    table. It overwrites the content of the table and returns the number of rows written.
     """
     job_config = bigquery.LoadJobConfig(
         autodetect=True,
