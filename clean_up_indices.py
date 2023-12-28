@@ -1,3 +1,22 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) Bitergia
+#
+# This program is free software: you can redistribute it and/or modify it under the terms 
+# of the GNU General Public License as published by the Free Software Foundation, either 
+# version 3 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY 
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
+# PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with this 
+# program. If not, see <https://www.gnu.org/licenses/>.
+#
+# Authors:
+#      Luis Cañas-Díaz <lcanas@bitergia.com>
+#
+
 import argparse
 import certifi
 import configparser
@@ -22,18 +41,19 @@ def main():
             print("Index %s not found" % str(index_name))
             continue            
         
-        file_name = read_and_write(index_name, parameters['output_dir'],os_client)
+        file_name = os_to_json(index_name, parameters['output_dir'],os_client)
         print("Index %s copied to local machine: file %s" %                
               (str(index_name), str(file_name)))
         
-        copy_to_bucket(parameters['bucket_name'], file_name, index_name)
+        json_to_bucket(parameters['bucket_name'], file_name, index_name)
         print("Index %s copied to bucket" % str(index_name))
         
-        bq_table_id = parameters['gcp_project'] + "." + parameters['bq_dataset'] + "." + index_name
+        bq_table_id = parameters['gcp_project'] + "." + parameters['bq_dataset'] + "." + \
+                index_name
         create_bq_table(bq_client, bq_table_id)
 
         uri = "gs://" + parameters['bucket_name'] + "/" + index_name
-        rows = copy_to_bq(bq_client, bq_table_id, uri)
+        rows = bucket_to_bq(bq_client, bq_table_id, uri)
         print("Index %s copied to BigQuery: %d rows" % (str(index_name), rows))
 
         if os.path.exists(file_name):
@@ -79,7 +99,8 @@ def os_connect(my_conf):
     
     Returns the established OpenSearch client object.
     """
-    connection = "https://" + my_conf['user'] + ":" + my_conf['password'] + "@" + my_conf['host'] + ":" + my_conf['port'] + "/" + my_conf['path']
+    connection = "https://" + my_conf['user'] + ":" + my_conf['password'] + "@" + \
+        my_conf['host'] + ":" + my_conf['port'] + "/" + my_conf['path']
 
     client = OpenSearch(
         hosts = [connection],
@@ -121,7 +142,7 @@ def key_breaks_bigquery(key):
 
     return breaks_bq
 
-def read_and_write(index_name, output_dir, opensearch_connection):
+def os_to_json(index_name, output_dir, opensearch_connection):
     """ This method extracts data from an OpenSearch index, converts it to JSON format, 
     and writes it to an individual JSON file. Returns the name of the file name as output.
 
@@ -156,8 +177,8 @@ def read_and_write(index_name, output_dir, opensearch_connection):
 
     return output_file
 
-def copy_to_bucket(bucket_name, source_file_name, destination_blob_name):
-    """ Uploads a file to the bucket.
+def json_to_bucket(bucket_name, source_file_name, destination_blob_name):
+    """ Uploads a json file to the bucket.
     """
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket_name)
@@ -166,7 +187,7 @@ def copy_to_bucket(bucket_name, source_file_name, destination_blob_name):
     blob.upload_from_filename(source_file_name)
 
 def create_bq_table(client, table_id):
-    """
+    """Creates table in BigQuery. Skip the exception if it already existed.
     """
     bq_table = bigquery.Table(table_id)
     try:
@@ -174,12 +195,10 @@ def create_bq_table(client, table_id):
     except exceptions.Conflict:
         pass
 
-def copy_to_bq(client, table_id, uri):
+def bucket_to_bq(client, table_id, uri):
+    """Copy content from a file in a Google bucket (given with the uri) to a BigQuery 
+    table. Returns the number of rows written in BigQuery.
     """
-    """
-    # TODO(developer): Set table_id to the ID of the table to create.
-    # table_id = "your-project.your_dataset.your_table_name"
-
     job_config = bigquery.LoadJobConfig(
         autodetect=True,
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
@@ -190,11 +209,11 @@ def copy_to_bq(client, table_id, uri):
         table_id,
         location="US",  # Must match the destination dataset location.
         job_config=job_config,
-    )  # Make an API request.
+    )
 
     load_job.result()  # Waits for the job to complete.
-
     destination_table = client.get_table(table_id)
+
     return destination_table.num_rows
 
 if __name__ == "__main__":
