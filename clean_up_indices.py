@@ -205,13 +205,14 @@ def bucket_to_bq(client, table_id, uri):
     job_config = bigquery.LoadJobConfig(
         autodetect=True,
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+        write_disposition = 'WRITE_TRUNCATE'
     )
     
     load_job = client.load_table_from_uri(
         uri,
         table_id,
         location="US",  # Must match the destination dataset location.
-        job_config=job_config,
+        job_config=job_config
     )
 
     load_job.result()  # Waits for the job to complete.
